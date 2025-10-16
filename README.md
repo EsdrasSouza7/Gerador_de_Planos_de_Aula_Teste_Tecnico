@@ -71,55 +71,10 @@ Ver diagrama em `database/diagram.png`
 
 ## 📝 Decisões Técnicas
 
+- netlify para visualizar funcionando
 - Supabase pela simplicidade do setup
 - Gemini Flash pelo custo zero e rapidez
 
 ## 👨‍💻 Autor
 
 Esdras Souza dos Santos - [GitHub](https://github.com/EsdrasSouza7)
-
----
-
-### **2. .gitignore** ⭐ (OBRIGATÓRIO)
-
-```
-
-# Dependências
-
-node_modules/
-.pnp
-.pnp.js
-
-# Ambiente
-
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Debug
-
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log\*
-
-# IDEs
-
-.vscode/
-.idea/
-_.swp
-_.swo
-\*~
-
-# OS
-
-.DS_Store
-Thumbs.db
-
-# Testes
-
-coverage/
-.nyc_output/
-
-```

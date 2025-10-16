@@ -436,7 +436,7 @@ function createLessonCard(plan) {
                 <button class="btn-small btn-view" onclick="viewPlan('${plan.id}')">
                     👁️ Ver Completo
                 </button>
-                <button class="btn-small btn-delete" onclick="deletePlan('${plan.id}')">
+                <button class="btn-small btn-delete disabled" onclick="deletePlan('${plan.id}')">
                     🗑️ Excluir
                 </button>
             </div>
