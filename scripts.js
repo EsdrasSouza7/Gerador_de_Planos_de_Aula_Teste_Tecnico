@@ -1,14 +1,36 @@
 // Importar apenas Supabase
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-// Configuração
-const SUPABASE_URL = '';
-const SUPABASE_KEY = '';
-const GEMINI_API_KEY = '';
+// Variáveis globais para configuração
+let CONFIG = {
+    SUPABASE_URL: '',
+    SUPABASE_KEY: '',
+};
+let supabase = null;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-console.log('✅ Configuração carregada!');
+// Carregar configuração das variáveis de ambiente via Netlify Function
+async function loadConfig() {
+    try {
+        console.log('🔄 Carregando configuração...');
+        const response = await fetch('/.netlify/functions/config');
+        
+        if (!response.ok) {
+            throw new Error('Falha ao carregar configuração');
+        }
+        
+        CONFIG = await response.json();
+        supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
+        
+        console.log('✅ Configuração carregada!');
+        console.log('🔗 Supabase URL:', CONFIG.SUPABASE_URL ? 'Configurado' : 'Não configurado');
+        console.log('🔑 Supabase Key:', CONFIG.SUPABASE_KEY ? 'Configurado' : 'Não configurado');
+        
+        return true;
+    } catch (error) {
+        console.error('❌ Erro ao carregar configuração:', error);
+        return false;
+    }
+}
 
 // ==================== FUNÇÕES DE GERAÇÃO ====================
 
@@ -110,29 +132,19 @@ async function generateLessonPlan(inputs) {
     const prompt = generatePrompt(inputs);
     
     try {
-        console.log('📤 Enviando para Gemini API...');
+        console.log('📤 Enviando para Gemini API via Netlify Function...');
         console.log('📝 Prompt enviado:', prompt.substring(0, 200) + '...');
         
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: {
-                        temperature: 0.7,
-                        maxOutputTokens: 2048,
-                        responseMimeType: "application/json"
-                    }
-                })
-            }
-        );
+        const response = await fetch('/.netlify/functions/generate-plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt })
+        });
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error('❌ Erro da API:', errorData);
-            throw new Error(`Erro ${response.status}: ${errorData.error?.message || 'Erro desconhecido'}`);
+            console.error('❌ Erro da função:', errorData);
+            throw new Error(`Erro ${response.status}: ${errorData.error || 'Erro desconhecido'}`);
         }
 
         const data = await response.json();
@@ -535,9 +547,25 @@ document.getElementById('lessonForm')?.addEventListener('submit', async (e) => {
     }
 });
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
     console.log('✅ Página carregada, iniciando...');
-    loadHistory();
+    
+    // Carregar configuração primeiro
+    const configLoaded = await loadConfig();
+    
+    if (configLoaded) {
+        loadHistory();
+    } else {
+        console.error('❌ Falha ao carregar configuração. Algumas funcionalidades podem não funcionar.');
+        const historyList = document.getElementById('historyList');
+        historyList.innerHTML = `
+            <div class="error">
+                <strong>Erro de Configuração:</strong><br>
+                Não foi possível carregar as variáveis de ambiente do Netlify.
+                Verifique se as variáveis SUPABASE_URL e SUPABASE_KEY estão configuradas.
+            </div>
+        `;
+    }
 });
 
 window.loadHistory = loadHistory;

@@ -77,3 +77,5 @@ supabase/.temp/
 .history/
 *.tgz
 .env*.local
+# Local Netlify folder
+.netlify
