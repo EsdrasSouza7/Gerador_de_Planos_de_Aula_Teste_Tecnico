@@ -198,7 +198,7 @@ async function generateLessonPlan(inputs) {
     const prompt = generatePrompt(inputs);
     
     try {
-        console.log('📤 Enviando para Gemini API...');
+        console.log('📤 Enviando para Gemini API via Netlify Function...');
         console.log('📝 Prompt enviado:', prompt.substring(0, 200) + '...');
         
         const response = await fetch(
@@ -219,8 +219,8 @@ async function generateLessonPlan(inputs) {
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error('❌ Erro da API:', errorData);
-            throw new Error(`Erro ${response.status}: ${errorData.error?.message || 'Erro desconhecido'}`);
+            console.error('❌ Erro da função:', errorData);
+            throw new Error(`Erro ${response.status}: ${errorData.error || 'Erro desconhecido'}`);
         }
 
         const data = await response.json();
