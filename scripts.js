@@ -1,34 +1,98 @@
 // Importar apenas Supabase
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-// Variáveis globais para configuração
-let CONFIG = {
-    SUPABASE_URL: '',
-    SUPABASE_KEY: '',
-};
-let supabase = null;
+// Configuração - será carregada dinamicamente
+let SUPABASE_URL = "";
+let SUPABASE_KEY = "";
+let GEMINI_API_KEY = "";
 
-// Carregar configuração das variáveis de ambiente via Netlify Function
+let supabase = null;
+let configLoaded = false;
+
+// Função para carregar configurações do Netlify
 async function loadConfig() {
     try {
-        console.log('🔄 Carregando configuração...');
-        const response = await fetch('/.netlify/functions/config');
-        
-        if (!response.ok) {
-            throw new Error('Falha ao carregar configuração');
+        // Se estiver no Netlify, busca das environment variables
+        if (window.location.hostname.includes('netlify.app')) {
+            console.log('🌐 Carregando configuração do Netlify...');
+            const response = await fetch('/.netlify/functions/config');
+            
+            if (!response.ok) {
+                throw new Error(`Erro ${response.status} ao carregar configuração`);
+            }
+            
+            const envConfig = await response.json();
+            
+            // Atualiza as configurações
+            SUPABASE_URL = envConfig.supabaseUrl;
+            SUPABASE_KEY = envConfig.supabaseKey;
+            GEMINI_API_KEY = envConfig.geminiApiKey;
+            
+            console.log('✅ Configuração do Netlify carregada');
+            
+            // Inicializa o Supabase
+            supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+            configLoaded = true;
+            
+        } else {
+            // Desenvolvimento local - use valores padrão ou mostre alerta
+            console.log('⚠️ Modo desenvolvimento local');
+            supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
         }
-        
-        CONFIG = await response.json();
-        supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
-        
-        console.log('✅ Configuração carregada!');
-        console.log('🔗 Supabase URL:', CONFIG.SUPABASE_URL ? 'Configurado' : 'Não configurado');
-        console.log('🔑 Supabase Key:', CONFIG.SUPABASE_KEY ? 'Configurado' : 'Não configurado');
-        
-        return true;
     } catch (error) {
         console.error('❌ Erro ao carregar configuração:', error);
-        return false;
+        showConfigError(error);
+    }
+}
+
+function showConfigError(error) {
+    const alertHTML = `
+        <div style="
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #f44336;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 10000;
+            max-width: 400px;
+            font-family: Arial, sans-serif;
+        ">
+            <h3 style="margin: 0 0 10px 0;">❌ Erro de Configuração</h3>
+            <p>Não foi possível carregar as configurações:</p>
+            <p style="font-size: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 4px; margin: 10px 0;">
+                ${error.message}
+            </p>
+            <p>Verifique as environment variables no Netlify.</p>
+            <button onclick="this.parentElement.remove()" style="
+                background: white;
+                color: #f44336;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                cursor: pointer;
+                margin-top: 10px;
+            ">Fechar</button>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', alertHTML);
+}
+
+// Função para verificar se a configuração está pronta
+async function ensureConfig() {
+    if (!configLoaded) {
+        await loadConfig();
+    }
+    
+    if (!supabase) {
+        throw new Error('Supabase não inicializado. Configure as chaves API.');
+    }
+    
+    if (!GEMINI_API_KEY) {
+        throw new Error('Chave Gemini API não configurada.');
     }
 }
 
@@ -129,17 +193,29 @@ function validateLessonPlan(plan) {
 }
 
 async function generateLessonPlan(inputs) {
+    await ensureConfig(); // Garante que a configuração está carregada
+    
     const prompt = generatePrompt(inputs);
     
     try {
         console.log('📤 Enviando para Gemini API via Netlify Function...');
         console.log('📝 Prompt enviado:', prompt.substring(0, 200) + '...');
         
-        const response = await fetch('/.netlify/functions/generate-plan', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt })
-        });
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: 1.0,
+                        maxOutputTokens: 1000000,
+                        responseMimeType: "application/json"
+                    }
+                })
+            }
+        );
 
         if (!response.ok) {
             const errorData = await response.json();
@@ -208,6 +284,8 @@ async function generateLessonPlan(inputs) {
 }
 
 async function saveLessonPlan(inputs, aiResponse) {
+    await ensureConfig(); // Garante que a configuração está carregada
+    
     try {
         console.log('💾 Tentando salvar no Supabase...');
         console.log('📋 Dados a serem salvos:', {
@@ -265,6 +343,8 @@ async function loadHistory() {
     const historyList = document.getElementById('historyList');
     
     try {
+        await ensureConfig(); // Garante que a configuração está carregada
+        
         historyList.innerHTML = '<div class="loading"><div class="spinner"></div><p>Carregando...</p></div>';
         
         console.log('📚 Buscando planos salvos no Supabase...');
@@ -366,6 +446,8 @@ function createLessonCard(plan) {
 
 window.viewPlan = async function(planId) {
     try {
+        await ensureConfig(); // Garante que a configuração está carregada
+        
         console.log('👁️ Visualizando plano:', planId);
         
         const { data, error } = await supabase
@@ -392,6 +474,8 @@ window.deletePlan = async function(planId) {
     }
     
     try {
+        await ensureConfig(); // Garante que a configuração está carregada
+        
         console.log('🗑️ Excluindo plano:', planId);
         
         const { error } = await supabase
@@ -509,6 +593,8 @@ document.getElementById('lessonForm')?.addEventListener('submit', async (e) => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     try {
+        await ensureConfig(); // Garante que a configuração está carregada
+        
         const formData = new FormData(e.target);
         const inputs = Object.fromEntries(formData.entries());
         
@@ -549,23 +635,8 @@ document.getElementById('lessonForm')?.addEventListener('submit', async (e) => {
 
 window.addEventListener('DOMContentLoaded', async () => {
     console.log('✅ Página carregada, iniciando...');
-    
-    // Carregar configuração primeiro
-    const configLoaded = await loadConfig();
-    
-    if (configLoaded) {
-        loadHistory();
-    } else {
-        console.error('❌ Falha ao carregar configuração. Algumas funcionalidades podem não funcionar.');
-        const historyList = document.getElementById('historyList');
-        historyList.innerHTML = `
-            <div class="error">
-                <strong>Erro de Configuração:</strong><br>
-                Não foi possível carregar as variáveis de ambiente do Netlify.
-                Verifique se as variáveis SUPABASE_URL e SUPABASE_KEY estão configuradas.
-            </div>
-        `;
-    }
+    await loadConfig(); // Carrega a configuração primeiro
+    loadHistory();
 });
 
 window.loadHistory = loadHistory;
