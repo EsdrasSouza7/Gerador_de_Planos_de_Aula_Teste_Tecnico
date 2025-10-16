@@ -71,7 +71,6 @@ Ver diagrama em `database/diagram.png`
 
 ## 📝 Decisões Técnicas
 
-- Escolhi Next.js pela facilidade de deploy
 - Supabase pela simplicidade do setup
 - Gemini Flash pelo custo zero e rapidez
 

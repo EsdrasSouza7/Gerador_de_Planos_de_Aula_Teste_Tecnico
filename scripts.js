@@ -2,9 +2,9 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 // Configuração
-const SUPABASE_URL = 'https://sdycpmuglfabawmwnozy.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNkeWNwbXVnbGZhYmF3bXdub3p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDU3MjEsImV4cCI6MjA3NjEyMTcyMX0.i15hElWsSapmwL65gk_LlHvriWmRUj0rnVHD_bO9oxk';
-const GEMINI_API_KEY = 'AIzaSyCO4DVpO2n_5NNmwYXHWJQp3mAxnEcr2ew';
+const SUPABASE_URL = '';
+const SUPABASE_KEY = '';
+const GEMINI_API_KEY = '';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
